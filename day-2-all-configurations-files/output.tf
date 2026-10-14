@@ -14,7 +14,7 @@ output "subnet2_az" {
   value = aws_subnet.test.availability_zone
 }
 output "vpc_tags" {
-  value = aws_vpc.main
+  value = aws_vpc.main.tags
 }
 output "subnet1_id" {
   value = aws_subnet.dev.id
