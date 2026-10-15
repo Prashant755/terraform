@@ -4,6 +4,6 @@ terraform {
     key            = "production/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
-    
+    lock_file      = true # s3 natively supports state locking, so this is optional
   }
 }
