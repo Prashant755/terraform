@@ -1,3 +1,59 @@
+##############################################
+# java 21 + jenkins
+#!/bin/bash
+set -e
+
+echo "========== Updating system =========="
+sudo dnf upgrade -y
+
+echo "========== Installing dependencies =========="
+# curl is NOT installed: AL2023 already ships curl-minimal, which provides /usr/bin/curl
+sudo dnf install -y wget git ca-certificates fontconfig
+
+echo "========== Refreshing CA certificates =========="
+sudo dnf reinstall -y ca-certificates
+sudo update-ca-trust extract
+
+echo "========== Installing Java 21 =========="
+sudo dnf install -y java-21-amazon-corretto
+
+echo "========== Verifying Java =========="
+java -version
+
+echo "========== Adding Jenkins LTS repository =========="
+sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/rpm-stable/jenkins.repo
+
+echo "========== Importing Jenkins GPG key =========="
+sudo rpm --import https://pkg.jenkins.io/rpm-stable/jenkins.io-2026.key
+
+echo "========== Installing Jenkins =========="
+sudo dnf clean all
+if ! sudo dnf install -y jenkins; then
+  echo "!! Normal install failed (likely mirror SSL error). Retrying with sslverify=0 for the Jenkins repo only..."
+  sudo sed -i '/^\[jenkins\]/a sslverify=0' /etc/yum.repos.d/jenkins.repo
+  sudo dnf clean all
+  sudo dnf install -y jenkins
+  # Remove the workaround now that the package is installed (RPM signature was still checked via gpgcheck)
+  sudo sed -i '/^sslverify=0/d' /etc/yum.repos.d/jenkins.repo
+fi
+
+echo "========== Starting Jenkins =========="
+sudo systemctl daemon-reload
+sudo systemctl enable --now jenkins
+sudo systemctl status jenkins --no-pager
+
+echo "========== Jenkins initial admin password =========="
+# Jenkins can take ~30-60s to generate this on first start
+for i in {1..40}; do
+  [ -f /var/lib/jenkins/secrets/initialAdminPassword ] && break
+  sleep 3
+done
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+
+echo "========== Installation completed =========="
+echo "Open http://<EC2-PUBLIC-IP>:8080 (allow TCP 8080 in the security group)"
+##############################################
+
 #!/bin/bash
 sudo yum update -y
 
